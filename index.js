@@ -1,5 +1,5 @@
 const dotenv = require("dotenv");
-const {Telegraf, Telegram} = require("telegraf");
+const {Telegraf} = require("telegraf");
 const LocalSession = require('telegraf-session-local')
 const {message} = require("telegraf/filters");
 dotenv.config()
@@ -30,7 +30,6 @@ bot.on(message('reply_to_message', 'text'), async (ctx) => {
             .find((message) => message.messageId === ctx.update.message.reply_to_message.message_id)
             .chatId
 
-        console.log()
         await ctx.sendMessage(ctx.update.message.text, {chat_id: chatId})
     }
 })
