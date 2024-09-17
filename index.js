@@ -28,6 +28,17 @@ const resendToUser = async (ctx) => {
     await ctx.copyMessage(topic.chatId)
 }
 
+const resendPromoMessage = async (ctx) => {
+    if (!isAdmin(ctx.update.message.chat.id)) return;
+
+    ctx.sessionDB
+        .get('topics')
+        .value()
+        .forEach(topic => {
+            ctx.copyMessage(topic.chatId)
+        })
+}
+
 const bot = new Telegraf(process.env.API_KEY_BOT)
 
 const localSession = new LocalSession({
@@ -40,26 +51,40 @@ const localSession = new LocalSession({
 bot.use(localSession.middleware())
 
 bot.start(async ctx => {
-    if (isAdmin(ctx.update.message.chat.id)) await ctx.reply('Hi, admin')
-    else {
-        const userTopic = ctx.sessionDB
-            .get('topics')
-            .value()
-            .find((tp) => tp.chatId === ctx.update.message.chat.id)
+    try {
+        if (isAdmin(ctx.update.message.chat.id)) await ctx.reply('Hi, admin')
+        else {
+            const userTopic = ctx.sessionDB
+                .get('topics')
+                .value()
+                .find((tp) => tp.chatId === ctx.update.message.chat.id)
 
-        if (!!userTopic) return;
+            if (!!userTopic) return;
 
-        const newTopic = await ctx.createForumTopic(ctx.update.message.from.username, {chat_id: process.env.ADMIN_CHAT_ID})
-        ctx.sessionDB.get('topics').push({
-            ...newTopic,
-            chatId: ctx.update.message.chat.id
-        }).write()
+            const newTopic = await ctx.createForumTopic(ctx.update.message.from.username, {chat_id: process.env.ADMIN_CHAT_ID})
+            ctx.sessionDB.get('topics').push({
+                ...newTopic,
+                chatId: ctx.update.message.chat.id
+            }).write()
+            await ctx.sendMessage('User started chat', {chat_id: process.env.ADMIN_CHAT_ID, message_thread_id: newTopic.message_thread_id})
+        }
+    } catch (error) {
+        await ctx.reply('Sorry! I have some troubles :-(')
     }
 })
 
 bot.on(message(), async (ctx) => {
-    if (isAdmin(ctx.update.message.chat.id)) await resendToUser(ctx)
-    else await resendToAdmin(ctx)
+    try {
+        if (ctx.update.message.from.is_bot) return;
+
+        // ctx.update.message.from?.language_code
+
+        if (ctx.update.message?.message_thread_id === +process.env.PROMO_MESSAGE_THREAD) await resendPromoMessage(ctx)
+        else if (isAdmin(ctx.update.message.chat.id)) await resendToUser(ctx)
+        else await resendToAdmin(ctx)
+    } catch (_) {
+        await ctx.reply('Sorry! I have some troubles :-(')
+    }
 })
 
 bot.launch()
