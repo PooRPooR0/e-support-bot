@@ -4,6 +4,16 @@ const LocalSession = require('telegraf-session-local')
 const {message} = require("telegraf/filters");
 dotenv.config()
 
+const languages = ['en', 'ru']
+const translations = {
+    'en': {
+        'start': 'Hi, colleague! This is an assistant bot. Write down your first and last name. Then write your question'
+    },
+    'ru': {
+        'start': 'Привет, коллега! Это бот-помощник. Напиши свое имя и фамилию. Затем напиши свой вопрос'
+    }
+}
+
 const isAdmin = (userChatId) => userChatId === +process.env.ADMIN_CHAT_ID
 
 const resendToAdmin = async (ctx) => {
@@ -54,6 +64,11 @@ bot.start(async ctx => {
     try {
         if (isAdmin(ctx.update.message.chat.id)) await ctx.reply('Hi, admin')
         else {
+            let userLang = ctx.update.message?.from?.language_code || 'en'
+            if (!languages.includes(userLang)) userLang = 'en'
+
+            await ctx.reply(translations[userLang].start)
+
             const userTopic = ctx.sessionDB
                 .get('topics')
                 .value()
@@ -76,8 +91,6 @@ bot.start(async ctx => {
 bot.on(message(), async (ctx) => {
     try {
         if (ctx.update.message.from.is_bot) return;
-
-        // ctx.update.message.from?.language_code
 
         if (ctx.update.message?.message_thread_id === +process.env.PROMO_MESSAGE_THREAD) await resendPromoMessage(ctx)
         else if (isAdmin(ctx.update.message.chat.id)) await resendToUser(ctx)
