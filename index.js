@@ -76,7 +76,7 @@ bot.start(async ctx => {
 
             if (!!userTopic) return;
 
-            const newTopic = await ctx.createForumTopic(ctx.update.message.from.username, {chat_id: process.env.ADMIN_CHAT_ID})
+            const newTopic = await ctx.createForumTopic(ctx.update.message.from?.username || `User: ${ctx.update.message.from.id}`, {chat_id: process.env.ADMIN_CHAT_ID})
             ctx.sessionDB.get('topics').push({
                 ...newTopic,
                 chatId: ctx.update.message.chat.id
